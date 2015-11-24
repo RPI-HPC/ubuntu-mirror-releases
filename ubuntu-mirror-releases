@@ -1,0 +1,44 @@
+#!/bin/sh
+
+######
+#
+# Originally sourced from:
+# http://ubuntuforums.org/archive/index.php/t-763925.html
+#
+#
+# Modified by: Daniel M. Weeks - Dec. 18, 2012
+#
+######
+
+# SETUP: set server to the hostname of the local release mirror
+
+server=
+dest=/var/www/html/ubuntu-releases
+apt_mirror_var=/var/spool/apt-mirror/var
+
+cd $dest >/dev/null 2>&1
+
+if [ $? -ne 0 ]; then
+	echo "Could not cd to $dest"
+	exit 1
+else:
+	echo "Working in $dest"
+fi
+
+echo "Fetch meta release info..."
+
+for i in "" -development -lts -proposed; do
+	echo "  meta-release$i"
+	wget http://changelogs.ubuntu.com/meta-release$i -O meta-release$i.orig -o ${apt_mirror_var}/meta-release-fetch-log.0
+done
+
+echo "Creating file list..."
+grep -h "\(ReleaseNotes\)\|\(UpgradeTool\)" meta-release.orig meta-release-development.orig meta-release-proposed.orig meta-release-development.orig |sort |uniq |sed s/".*: //" > ${apt_mirror_var}/release-url.0
+
+echo "Fetching files..."
+wget -t 0 -r -N -l inf -o ${apt_mirror_var}/release-log.0 -i ${apt_mirror_var}/release-url.0
+
+echo "Generating local meta release info..."
+for i in "" -development -lts -proposed; do
+	sed "s/\(\(\(ReleaseNotes\)\|\(UpgradeTool\)\).*: http:\/\)/\1\/$server\/ubuntu-releases/" meta-release$i.orig > meta-release$i
+done
